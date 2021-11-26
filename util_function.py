@@ -274,7 +274,7 @@ def loss_function(recon_x, x, mu, logvar):
 # Graph
 
 
-def loss_function_graph(recon_x, x, mu, logvar, graphregu=None, gammaPara=1.0, regulationMatrix=None, regularizer_type='noregu', reguPara=0.001, modelusage='AE', reduction='sum'):
+def loss_function_graph(recon_x, x, mu, logvar, graphregu=None, gammaPara=1.0, regulationMatrix=None, regularizer_type='noregu', reguPara=0.001, modelusage='AE', reduction='sum', newRegularizer=False):
     '''
     Regularized by the graph information
     Reconstruction + KL divergence losses summed over all elements and batch
@@ -294,11 +294,11 @@ def loss_function_graph(recon_x, x, mu, logvar, graphregu=None, gammaPara=1.0, r
     elif regularizer_type == 'LTMG':
         loss = BCE + reguPara * \
             regulation_mse_loss_function(
-                recon_x, target, regulationMatrix, reduction=reduction)
+                recon_x, target, regulationMatrix, reduction=reduction, newRegularizer=newRegularizer)
     elif regularizer_type == 'LTMG01':
         loss = BCE + reguPara * \
             regulation01_mse_loss_function(
-                recon_x, target, regulationMatrix, reduction=reduction)
+                recon_x, target, regulationMatrix, reduction=reduction, newRegularizer=newRegularizer)
     elif regularizer_type == 'Graph':
         loss = BCE + reguPara * \
             graph_mse_loss_function(
@@ -331,7 +331,7 @@ def loss_function_graph(recon_x, x, mu, logvar, graphregu=None, gammaPara=1.0, r
 # Graph
 
 
-def loss_function_graph_celltype(recon_x, x, mu, logvar, graphregu=None, celltyperegu=None, gammaPara=1.0, regulationMatrix=None, regularizer_type='noregu', reguPara=0.001, reguParaCelltype=0.001, modelusage='AE', reduction='sum'):
+def loss_function_graph_celltype(recon_x, x, mu, logvar, graphregu=None, celltyperegu=None, gammaPara=1.0, regulationMatrix=None, regularizer_type='noregu', reguPara=0.001, reguParaCelltype=0.001, modelusage='AE', reduction='sum', newRegularizer=False):
     '''
     Regularized by the graph information
     Reconstruction + KL divergence losses summed over all elements and batch
@@ -351,11 +351,11 @@ def loss_function_graph_celltype(recon_x, x, mu, logvar, graphregu=None, celltyp
     elif regularizer_type == 'LTMG':
         loss = BCE + reguPara * \
             regulation_mse_loss_function(
-                recon_x, target, regulationMatrix, reduction=reduction)
+                recon_x, target, regulationMatrix, reduction=reduction, newRegularizer=newRegularizer)
     elif regularizer_type == 'LTMG01':
         loss = BCE + reguPara * \
             regulation01_mse_loss_function(
-                recon_x, target, regulationMatrix, reduction=reduction)
+                recon_x, target, regulationMatrix, reduction=reduction, newRegularizer=newRegularizer)
     elif regularizer_type == 'Graph':
         loss = BCE + reguPara * \
             graph_mse_loss_function(
@@ -366,7 +366,7 @@ def loss_function_graph_celltype(recon_x, x, mu, logvar, graphregu=None, celltyp
             graph_mse_loss_function(
                 recon_x, target, graphregu=celltyperegu, reduction=reduction)
     elif regularizer_type == 'CelltypeR':
-        loss = BCE + (1-gammaPara) * regulation01_mse_loss_function(recon_x, target, regulationMatrix, reduction=reduction) + reguPara * graph_mse_loss_function(recon_x,
+        loss = BCE + (1-gammaPara) * regulation01_mse_loss_function(recon_x, target, regulationMatrix, reduction=reduction, newRegularizer=newRegularizer) + reguPara * graph_mse_loss_function(recon_x,
                                                                                                                                                                  target, graphregu=graphregu, reduction=reduction) + reguParaCelltype * graph_mse_loss_function(recon_x, target, graphregu=celltyperegu, reduction=reduction)
 
     # see Appendix B from VAE paper:
@@ -427,7 +427,7 @@ def vallina_mse_loss_function(input, target, size_average=None, reduce=None, red
 # Now LTMG is set as the input
 
 
-def regulation_mse_loss_function(input, target, regulationMatrix, size_average=None, reduce=None, reduction='mean'):
+def regulation_mse_loss_function(input, target, regulationMatrix, size_average=None, reduce=None, reduction='mean', newRegularizer=False):
     # type: (Tensor, Tensor, str, Optional[bool], Optional[bool], str) -> Tensor
     r"""regulation_mse_loss_function(input, target, regulationMatrix, regularizer_type, size_average=None, reduce=None, reduction='mean') -> Tensor
 
@@ -441,19 +441,25 @@ def regulation_mse_loss_function(input, target, regulationMatrix, size_average=N
               "Please ensure they have the same size.".format(target.size(), input.size()))
     if size_average is not None or reduce is not None:
         reduction = legacy_get_string(size_average, reduce)
-    # Now it use regulariz type to distinguish, it can be imporved later
-    ret = (input - target) ** 2
-    # ret = (0.001*input - 0.001*target) ** 2
-    ret = torch.mul(ret, regulationMatrix)
+    if not newRegularizer:
+        # Now it use regulariz type to distinguish, it can be imporved later
+        ret = (input - target) ** 2
+        # ret = (0.001*input - 0.001*target) ** 2
+        ret = torch.mul(ret, regulationMatrix)
+    else:
+        # Calculate the 1/0 Regulation Matrix for each type
+        ret = 0
+        for pathway in np.unique(regulationMatrix):
+            pmatrix = (regulationMatrix == pathway).type(torch.float)
+            expPmatrix = torch.mul(input, pmatrix)
+            ret = ret + (expPmatrix - expPmatrix.mean())        
     if reduction != 'none':
         ret = torch.mean(ret) if reduction == 'mean' else torch.sum(ret)
     return ret
 
 # Regulation mse as the regularizor
 # Now LTMG is set as the input
-
-
-def regulation01_mse_loss_function(input, target, regulationMatrix, size_average=None, reduce=None, reduction='mean'):
+def regulation01_mse_loss_function(input, target, regulationMatrix, size_average=None, reduce=None, reduction='mean', newRegularizer=False):
     # type: (Tensor, Tensor, str, Optional[bool], Optional[bool], str) -> Tensor
     r"""regulation_mse_loss_function(input, target, regulationMatrix, regularizer_type, size_average=None, reduce=None, reduction='mean') -> Tensor
 
@@ -467,13 +473,21 @@ def regulation01_mse_loss_function(input, target, regulationMatrix, size_average
               "Please ensure they have the same size.".format(target.size(), input.size()))
     if size_average is not None or reduce is not None:
         reduction = legacy_get_string(size_average, reduce)
-    # Now it use regulariz type to distinguish, it can be imporved later
-    ret = (input - target) ** 2
-    # ret = (0.001*input - 0.001*target) ** 2
-    regulationMatrix[regulationMatrix > 0] = 1
-    ret = torch.mul(ret, regulationMatrix)
+    if newRegularizer:
+        # Now it use regulariz type to distinguish, it can be imporved later
+        ret = (input - target) ** 2
+        # ret = (0.001*input - 0.001*target) ** 2
+        regulationMatrix[regulationMatrix > 0] = 1
+        ret = torch.mul(ret, regulationMatrix)
+    else:
+        # Calculate the 1/0 Regulation Matrix for each type
+        ret = 0
+        for pathway in np.unique(regulationMatrix):
+            pmatrix = (regulationMatrix == pathway).type(torch.float)
+            expPmatrix = torch.mul(target, pmatrix)
+            ret = ret + (expPmatrix - expPmatrix.mean()) 
     if reduction != 'none':
-        ret = torch.mean(ret) if reduction == 'mean' else torch.sum(ret)
+        ret = torch.mean(ret) if reduction == 'mean' else torch.sum(ret) 
     return ret
 
 

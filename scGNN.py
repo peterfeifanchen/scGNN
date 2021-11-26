@@ -86,6 +86,7 @@ parser.add_argument('--ltmgExpressionFile', type=str, default='Use_expression.cs
                     help='expression File after ltmg in csv')
 parser.add_argument('--ltmgFile', type=str, default='LTMG_sparse.mtx',
                     help='expression File in csv. (default:LTMG_sparse.mtx for sparse mode/ ltmg.csv for nonsparse mode) ')
+parser.add_argument('--useNewRegularizer', action='store_true', default=False, help='whether to use our new regularizer proposed in the project')
 
 # Clustering related
 parser.add_argument('--useGAEembedding', action='store_true', default=False,
@@ -266,14 +267,14 @@ def train(epoch, train_loader=train_loader, EMFlag=False, taskType='celltype', s
             if taskType == 'celltype':
                 if EMFlag and (not args.EMreguTag):
                     loss = loss_function_graph(recon_batch, data.view(-1, recon_batch.shape[1]), mu, logvar, gammaPara=args.gammaPara, regulationMatrix=regulationMatrixBatch,
-                                               regularizer_type='noregu', reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction)
+                                               regularizer_type='noregu', reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction, newRegularizer=args.useNewRegularizer)
                 else:
                     loss = loss_function_graph(recon_batch, data.view(-1, recon_batch.shape[1]), mu, logvar, gammaPara=args.gammaPara, regulationMatrix=regulationMatrixBatch,
-                                               regularizer_type=args.regulized_type, reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction)
+                                               regularizer_type=args.regulized_type, reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction, newRegularizer=args.useNewRegularizer)
             elif taskType == 'imputation':
                 if EMFlag and (not args.EMreguTag):
                     loss = loss_function_graph_celltype(recon_batch, data.view(-1, recon_batch.shape[1]), mu, logvar, graphregu=adjsampleBatch, celltyperegu=celltypesampleBatch, gammaPara=args.gammaImputePara,
-                                                        regulationMatrix=regulationMatrixBatch, regularizer_type=args.EMregulized_type, reguPara=args.graphImputePara, reguParaCelltype=args.celltypeImputePara, modelusage=args.model, reduction=args.reduction)
+                                                        regulationMatrix=regulationMatrixBatch, regularizer_type=args.EMregulized_type, reguPara=args.graphImputePara, reguParaCelltype=args.celltypeImputePara, modelusage=args.model, reduction=args.reduction, newRegularizer=args.useNewRegularizer)
                 else:
                     loss = loss_function_graph_celltype(recon_batch, data.view(-1, recon_batch.shape[1]), mu, logvar, graphregu=adjsampleBatch, celltyperegu=celltypesampleBatch, gammaPara=args.gammaImputePara,
                                                         regulationMatrix=regulationMatrixBatch, regularizer_type=args.regulized_type, reguPara=args.graphImputePara, reguParaCelltype=args.celltypeImputePara, modelusage=args.model, reduction=args.reduction)
@@ -285,14 +286,14 @@ def train(epoch, train_loader=train_loader, EMFlag=False, taskType='celltype', s
             if taskType == 'celltype':
                 if EMFlag and (not args.EMreguTag):
                     loss = loss_function_graph(recon_batch, data.view(-1, recon_batch.shape[1]), mu_dummy, logvar_dummy, gammaPara=args.gammaPara,
-                                               regulationMatrix=regulationMatrixBatch, regularizer_type='noregu', reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction)
+                                               regulationMatrix=regulationMatrixBatch, regularizer_type='noregu', reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction, newRegularizer=args.useNewRegularizer)
                 else:
                     loss = loss_function_graph(recon_batch, data.view(-1, recon_batch.shape[1]), mu_dummy, logvar_dummy, gammaPara=args.gammaPara, regulationMatrix=regulationMatrixBatch,
-                                               regularizer_type=args.regulized_type, reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction)
+                                               regularizer_type=args.regulized_type, reguPara=args.alphaRegularizePara, modelusage=args.model, reduction=args.reduction, newRegularizer=args.useNewRegularizer)
             elif taskType == 'imputation':
                 if EMFlag and (not args.EMreguTag):
                     loss = loss_function_graph_celltype(recon_batch, data.view(-1, recon_batch.shape[1]), mu_dummy, logvar_dummy, graphregu=adjsampleBatch, celltyperegu=celltypesampleBatch, gammaPara=args.gammaImputePara,
-                                                        regulationMatrix=regulationMatrixBatch, regularizer_type=args.EMregulized_type, reguPara=args.graphImputePara, reguParaCelltype=args.celltypeImputePara, modelusage=args.model, reduction=args.reduction)
+                                                        regulationMatrix=regulationMatrixBatch, regularizer_type=args.EMregulized_type, reguPara=args.graphImputePara, reguParaCelltype=args.celltypeImputePara, modelusage=args.model, reduction=args.reduction, newRegularizer=args.useNewRegularizer)
                 else:
                     loss = loss_function_graph_celltype(recon_batch, data.view(-1, recon_batch.shape[1]), mu_dummy, logvar_dummy, graphregu=adjsampleBatch, celltyperegu=celltypesampleBatch, gammaPara=args.gammaImputePara,
                                                         regulationMatrix=regulationMatrixBatch, regularizer_type=args.regulized_type, reguPara=args.graphImputePara, reguParaCelltype=args.celltypeImputePara, modelusage=args.model, reduction=args.reduction)
